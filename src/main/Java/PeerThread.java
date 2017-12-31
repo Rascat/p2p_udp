@@ -3,29 +3,20 @@ package main.Java;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 public class PeerThread extends Thread {
 
     private DatagramSocket socket = null;
-    private ArrayList<String> data = new ArrayList<>();
-    private Map<String, String> connPeer = null;
-    private InetAddress connPeerAddress = null;
-    private int connPeerPort = 0;
+    private DataService dataService = null;
     private String status = null;
+    private InetAddress localHost = null;
 
-    PeerThread() throws IOException {
-        this("PeerThread", 5000, "Date: " + (new Date()).toString());
-    }
-
-    PeerThread(String name, int portNr, String data) throws IOException {
+    PeerThread(String name, int portNr, String artist, String title) throws IOException {
         super(name);
         this.socket = new DatagramSocket(portNr);
-        this.data.add(data);
-        this.connPeer = new HashMap<>();
+        this.dataService = new DataService(artist, title);
         this.status = "UNKNOWN";
+        this.localHost = InetAddress.getLocalHost();
     }
 
     public void run() {
@@ -33,98 +24,79 @@ public class PeerThread extends Thread {
         while (true) {
 
             if (this.status.equals("UNKNOWN")) {
-                establishConnection();
+                broadcastInitialData();
+                // receive data sequences from n possible peers
+                while (true) {
+                    try {
+                        receiveDataSequence(100);
+                    } catch (IOException ioEx) {
+                        break;
+                    }
+                }
             }
-
-            if (this.status.equals("READY")) {
-                waitOnConnectionRequest();
-                receiveData(); // status now CONNECTED
-                sendData();
-                endConnection();
+            if (this.status.equals("WAITING")) {
+                try {
+                    int portOfSender = receiveDataSequence(0);
+                    sendDataSequence(this.localHost, portOfSender, this.dataService.getCommaSeparatedInitialData());
+                } catch (IOException ioEx) {
+                    ioEx.printStackTrace();
+                }
             }
-
-            if (this.status.equals("CONNECTED")) {
-                sendData();
-                receiveData();
-                endConnection();
-            }
-
+            this.dataService.printAllData();
         }
-
     }
 
-    private void establishConnection() {
-
-        byte[] buf = new byte[512];
-        DatagramPacket rp = new DatagramPacket(buf, buf.length);
+    private void broadcastInitialData() {
+        ArrayList<String> initialData = this.dataService.getCommaSeparatedInitialData();
 
         for (int port = 50001; port < 50010; port += 1) {
-            // Don't send traffic connection request to own port
+            // Don't send traffic to own port
             if (port == this.socket.getLocalPort()) {
                 continue;
             }
-            try {
-                InetAddress localHost = InetAddress.getLocalHost();
-                this.socket.send(P2Protocol.connect(localHost, port));
-                System.out.println("Peer named " + this.getName() + " send connection request");
-
-                this.socket.setSoTimeout(500);
-                this.socket.receive(rp);
-
-                if (P2Protocol.isP2ProtocolOKPck(rp)) {
-                    this.connPeerAddress = rp.getAddress();
-                    this.connPeerPort = rp.getPort();
-                    System.out.println("Connected to: " + this.connPeerAddress + " on Port: " + this.connPeerPort);
-                    this.status = "CONNECTED";
-                    return;
-                }
-
-            } catch (SocketTimeoutException stEx) {
-                System.out.println("Timeout reached");
-                //this.socket.close();
-            } catch (IOException ioEx) {
-                ioEx.printStackTrace();
-                System.out.println("Something went horribly wrong");
-            }
+            sendDataSequence(this.localHost, port, initialData);
+            System.out.println("Sending init Data to port nr.: " + port);
         }
-        this.status = "READY";
-        System.out.println("Could not connect to peer");
+        System.out.println(this.getName() + "finished broadcasting initial data");
+        this.status = "WAITING";
     }
 
-    private void waitOnConnectionRequest()
-    {
+
+    private int receiveDataSequence(int milliseconds) throws IOException {
         byte[] buf = new byte[512];
-        DatagramPacket rp = new DatagramPacket(buf, buf.length);
+        int portOfSender;
+        while (true) {
 
-        try{
-            this.socket.setSoTimeout(0);
+            DatagramPacket rp = new DatagramPacket(buf, buf.length);
+            this.socket.setSoTimeout(milliseconds);
             this.socket.receive(rp);
+            String receivedData = new String(rp.getData(),0, rp.getLength());
+            System.out.println("received data: " + receivedData);
+            portOfSender = rp.getPort();
 
-            if (P2Protocol.isP2ProtocolCONNECTPck(rp)) {
-                this.connPeerAddress = rp.getAddress();
-                this.connPeerPort = rp.getPort();
-
-                this.socket.send(P2Protocol.ok(rp.getAddress(), rp.getPort()));
-                this.status = "CONNECTED";
-                System.out.println("Peer is connected with " + this.connPeerAddress + "on Port: " + this.connPeerPort);
-                return;
+            if (P2Protocol.isSTOP(receivedData)) {
+                break;
+            } else {
+                this.dataService.addCommaSeparatedData(receivedData);
             }
-
-        } catch (IOException ioEx) {
-            ioEx.printStackTrace();
         }
-        System.out.println("Waited without success");
+        return portOfSender;
     }
 
-    private void sendData()
-    {
+    private void sendDataSequence(InetAddress address, int port, ArrayList<String> data) {
         try {
-            byte[] buf = this.data.get(0).getBytes();
-            InetAddress address =  this.connPeerAddress;
-            int port = this.connPeerPort;
+            byte[] buf;
 
-            DatagramPacket sp = new DatagramPacket(buf, buf.length, address, port);
-            this.socket.send(sp);
+            for (String dataItem : data) {
+                buf = dataItem.getBytes();
+                DatagramPacket dataPacket = new DatagramPacket(buf, buf.length, address, port);
+                this.socket.send(dataPacket);
+            }
+
+            byte[] byeBuf = P2Protocol.stop().getBytes();
+            DatagramPacket stopPacket = new DatagramPacket(byeBuf, byeBuf.length, address, port);
+            this.socket.send(stopPacket);
+            System.out.println("send data");
 
         } catch (UnknownHostException uhEx) {
             System.out.println("WTF");
@@ -134,45 +106,6 @@ public class PeerThread extends Thread {
         }
     }
 
-    private void receiveData()
-    {
-        try{
-            byte[] buf = new byte[512];
-            DatagramPacket rp = new DatagramPacket(buf, buf.length);
-
-            socket.receive(rp);
-            if (P2Protocol.isP2ProtocolPck(rp)) {
-                System.out.println("That was a P2Protocol packet");
-            } else {
-                String data = new String(rp.getData(), 0, rp.getLength());
-                System.out.println("Received: " + data);
-                this.data.add(data);
-            }
-        } catch (IOException ioEx) {
-            ioEx.printStackTrace();
-        }
-    }
-
-    private void endConnection()
-    {
-        try{
-            socket.send(P2Protocol.bye(this.connPeerAddress, this.connPeerPort));
-            this.connPeerAddress = null;
-            this.connPeerPort = 0;
-            this.status = "READY";
-
-        } catch (IOException ioEx) {
-            ioEx.printStackTrace();
-            System.out.println("Could not end connection");
-        }
-    }
-
-    private void printPeerData() {
-        System.out.println("Peer named " + this.getName() + " has the following data:");
-        for (String dataItem : this.data) {
-            System.out.println(dataItem);
-        }
-    }
 
     private void printPacketInfo(DatagramPacket packet) {
         System.out.println("\n Packet Meta Data:");
