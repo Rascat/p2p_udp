@@ -22,7 +22,6 @@ public class PeerThread extends Thread {
     public void run() {
 
         while (true) {
-
             if (this.status.equals("UNKNOWN")) {
                 broadcastInitialData();
                 // receive data sequences from n possible peers
@@ -36,6 +35,7 @@ public class PeerThread extends Thread {
             }
             if (this.status.equals("WAITING")) {
                 try {
+                    System.out.println("Warte auf neue daten");
                     int portOfSender = receiveDataSequence(0);
                     sendDataSequence(this.localHost, portOfSender, this.dataService.getCommaSeparatedInitialData());
                 } catch (IOException ioEx) {
@@ -55,7 +55,6 @@ public class PeerThread extends Thread {
                 continue;
             }
             sendDataSequence(this.localHost, port, initialData);
-            System.out.println("Sending init Data to port nr.: " + port);
         }
         System.out.println(this.getName() + "finished broadcasting initial data");
         this.status = "WAITING";
@@ -96,7 +95,6 @@ public class PeerThread extends Thread {
             byte[] byeBuf = P2Protocol.stop().getBytes();
             DatagramPacket stopPacket = new DatagramPacket(byeBuf, byeBuf.length, address, port);
             this.socket.send(stopPacket);
-            System.out.println("send data");
 
         } catch (UnknownHostException uhEx) {
             System.out.println("WTF");

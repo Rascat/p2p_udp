@@ -1,6 +1,5 @@
 package main.Java;
 
-import java.net.DatagramPacket;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -47,7 +46,8 @@ public class DataService {
 
     private void addData(String artist, String title) {
         HashMap<String, String> dataMap = new HashMap<>();
-        dataMap.put(artist, title);
+        dataMap.put("artist", artist);
+        dataMap.put("title", title);
         this.data.add(dataMap);
     }
 
