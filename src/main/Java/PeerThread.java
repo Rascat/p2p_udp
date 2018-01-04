@@ -6,10 +6,10 @@ import java.util.ArrayList;
 
 public class PeerThread extends Thread {
 
-    private DatagramSocket socket = null;
-    private DataService dataService = null;
-    private String status = null;
-    private InetAddress localHost = null;
+    private DatagramSocket socket;
+    private DataService dataService;
+    private String status;
+    private InetAddress localHost;
 
     PeerThread(String name, int portNr, String artist, String title) throws IOException {
         super(name);
@@ -19,9 +19,15 @@ public class PeerThread extends Thread {
         this.localHost = InetAddress.getLocalHost();
     }
 
+    public DataService getDataService()
+    {
+        return this.dataService;
+    }
+
     public void run() {
 
-        while (true) {
+        while (!this.isInterrupted()) {
+
             if (this.status.equals("UNKNOWN")) {
                 broadcastInitialData();
                 // receive data sequences from n possible peers
@@ -33,16 +39,17 @@ public class PeerThread extends Thread {
                     }
                 }
             }
+
             if (this.status.equals("WAITING")) {
                 try {
-                    System.out.println("Warte auf neue daten");
-                    int portOfSender = receiveDataSequence(0);
+                    // System.out.println("Warte auf neue daten");
+                    int portOfSender = receiveDataSequence(2000);
                     sendDataSequence(this.localHost, portOfSender, this.dataService.getCommaSeparatedInitialData());
                 } catch (IOException ioEx) {
-                    ioEx.printStackTrace();
+                   // System.out.println("...");
                 }
             }
-            this.dataService.printAllData();
+            // this.dataService.printAllData();
         }
     }
 
