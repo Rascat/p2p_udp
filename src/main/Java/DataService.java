@@ -3,18 +3,18 @@ package main.Java;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+/**
+ * Used to handle the data management of a peer.
+ */
 public class DataService {
 
-    private ArrayList<HashMap<String, String>> initialData = null;
-    private ArrayList<HashMap<String, String>> data = null;
+    private ArrayList<HashMap<String, String>> initialData;
+    private ArrayList<HashMap<String, String>> data;
 
-    DataService(String artist, String title) {
-        HashMap<String, String> initialDataMap = new HashMap<>();
-        initialDataMap.put("artist", artist);
-        initialDataMap.put("title", title);
+    DataService(ArrayList<HashMap<String, String>> initialData) {
         this.initialData = new ArrayList<>();
         this.data = new ArrayList<>();
-        this.initialData.add(initialDataMap);
+        this.initialData = initialData;
     }
 
     public ArrayList<HashMap<String, String>> getInitialData() {
