@@ -26,18 +26,17 @@ public class InputService {
         ArrayList<HashMap<String, String>> initialData = new ArrayList<>();
         while (true) {
             System.out.println(
-                    "\n Enter (n) to proceed with transmission of artist/title information\n" +
-                            "Enter (q) to quit data transmission");
+                    "\nEnter (n) in order to define artist/title input\n" + "Enter (q) to quit data transmission");
             String userInput = inputScanner.next();
             if (!(userInput.equals("n")) && !(userInput.equals("q"))) {
                 System.out.println("Invalid Input");
             } else if (userInput.equals("n")) {
                 HashMap<String, String> inputMap = new HashMap<>();
 
-                System.out.println("Artist:");
+                System.out.println("\nArtist:");
                 String artist = inputScanner.next();
                 inputMap.put("artist", artist);
-                System.out.println("Title:");
+                System.out.println("\nTitle:");
                 String title = inputScanner.next();
                 inputMap.put("title", title);
 
@@ -55,7 +54,7 @@ public class InputService {
      */
     public String scanStatusControl() {
         while (true) {
-            System.out.println("Type (p) to print all available data or (x) to exit program");
+            System.out.println("\nType (p) to print all available data or (x) to exit program");
             String userInput = inputScanner.next();
 
             if (!(userInput.equals("p")) && !(userInput.equals("x"))) {

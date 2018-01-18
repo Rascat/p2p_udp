@@ -9,7 +9,7 @@ import java.util.HashMap;
  * Checks for other peers in the port range 50001 - 50010.
  * If other peers are available, the initial set of data is being exchanged,
  * and the data from the other peers collected and saved.
- * Accepts user input in order to print out the current data or exit the application.
+ * Accepts user input in order to print out the current data or halt execution.
  */
 public class Peer {
 
@@ -22,12 +22,11 @@ public class Peer {
      * @throws IOException IOex
      */
     public static void main(String[] args) throws IOException {
+        System.out.println("Peer has been initialized with the following configuration:\n" +
+                "Peer Name: " + args[0] + "\n" +
+                "Port Number: " + args[1]);
         InputService inputService = new InputService();
 
-        System.out.println(
-                "Peer has been started. Initializing start-up sequence:\n" +
-                "\n" +
-                "You can initialize peer with data now (artist, title)");
         ArrayList<HashMap<String, String>> initialData = inputService.scanInitialData();
 
         PeerThread pt = new PeerThread(args[0], Integer.parseInt(args[1]), initialData);
